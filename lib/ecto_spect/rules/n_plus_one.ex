@@ -1,10 +1,13 @@
 defmodule EctoSpect.Rules.NPlusOne do
   @moduledoc """
-  Detects N+1 query patterns within a single test.
+  Detects N+1 SELECT query patterns within a single test.
 
-  An N+1 pattern occurs when the same query (with different parameter values)
-  is executed many times in a loop — typically because associations are loaded
-  one-by-one instead of being preloaded in bulk.
+  An N+1 pattern occurs when the same SELECT query (with different parameter
+  values) is executed many times in a loop — typically because associations are
+  loaded one-by-one instead of being preloaded in bulk.
+
+  Only SELECT queries are analysed. INSERT/UPDATE/DELETE repetition in tests is
+  normal (e.g. creating fixtures) and does not constitute an N+1 problem.
 
   This rule does not use EXPLAIN — it analyzes the full list of captured queries
   via `check_group/2`.
@@ -18,7 +21,7 @@ defmodule EctoSpect.Rules.NPlusOne do
   def name, do: "n-plus-one"
 
   @impl true
-  def description, do: "Detects N+1 query patterns within a single test"
+  def description, do: "Detects N+1 SELECT query patterns within a single test"
 
   @impl true
   def check(_nodes, _entry, _thresholds), do: []
@@ -28,6 +31,7 @@ defmodule EctoSpect.Rules.NPlusOne do
     threshold = Map.get(thresholds, :n_plus_one, 5)
 
     entries
+    |> Enum.filter(&select?/1)
     |> Enum.group_by(&normalize_sql/1)
     |> Enum.filter(fn {_sql, group} -> length(group) >= threshold end)
     |> Enum.map(fn {normalized_sql, group} ->
@@ -54,6 +58,13 @@ defmodule EctoSpect.Rules.NPlusOne do
         details: %{count: count, normalized_sql: normalized_sql}
       }
     end)
+  end
+
+  defp select?(entry) do
+    entry.sql
+    |> String.trim_leading()
+    |> String.upcase()
+    |> String.starts_with?("SELECT")
   end
 
   # Strip parameter placeholders ($1, $2, ...) to normalize the query template.
