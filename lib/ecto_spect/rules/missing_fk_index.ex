@@ -1,4 +1,6 @@
 defmodule EctoSpect.Rules.MissingFkIndex do
+  @compile {:no_warn_undefined, Postgrex}
+
   @moduledoc """
   Detects foreign key columns that have no supporting index.
 

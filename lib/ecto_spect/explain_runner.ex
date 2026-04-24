@@ -1,4 +1,6 @@
 defmodule EctoSpect.ExplainRunner do
+  @compile {:no_warn_undefined, Postgrex}
+
   @moduledoc """
   Runs EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) on captured queries using a
   dedicated Postgrex connection that is separate from the Ecto sandbox.

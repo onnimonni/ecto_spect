@@ -1,4 +1,6 @@
 defmodule EctoSpect.Rules.UnusedIndexes do
+  @compile {:no_warn_undefined, Postgrex}
+
   @moduledoc """
   Detects indexes that were never scanned during the test suite.
 

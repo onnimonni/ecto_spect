@@ -1,4 +1,6 @@
 defmodule EctoSpect.Rules.SerialOverflow do
+  @compile {:no_warn_undefined, Postgrex}
+
   @moduledoc """
   Detects sequences approaching integer overflow.
 

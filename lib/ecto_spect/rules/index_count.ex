@@ -1,4 +1,6 @@
 defmodule EctoSpect.Rules.IndexCount do
+  @compile {:no_warn_undefined, Postgrex}
+
   @moduledoc """
   Warns when a table has too many indexes, which slows down writes.
 
