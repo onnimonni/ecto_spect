@@ -60,7 +60,9 @@ defmodule EctoSpect.Case do
 
               unless schema_run? do
                 schema_rules =
-                  Enum.filter(config.rules, &function_exported?(&1, :check_schema, 2))
+                  Enum.filter(config.rules, fn rule ->
+                    Code.ensure_loaded?(rule) and function_exported?(rule, :check_schema, 2)
+                  end)
 
                 schema_violations =
                   Enum.flat_map(schema_rules, & &1.check_schema(conn, config.thresholds))
@@ -103,10 +105,14 @@ defmodule EctoSpect.Case do
             entries = EctoSpect.QueryStore.take_for(test_pid)
 
             if entries != [] do
-              # Group-level checks (N+1, etc.) — no EXPLAIN needed
+              # Group-level checks (N+1, etc.) — no EXPLAIN needed.
+              # Code.ensure_loaded? forces lazy-loaded rule modules (runtime: false deps)
+              # to be available before function_exported? checks them.
               group_violations =
                 config.rules
-                |> Enum.filter(&function_exported?(&1, :check_group, 2))
+                |> Enum.filter(fn rule ->
+                  Code.ensure_loaded?(rule) and function_exported?(rule, :check_group, 2)
+                end)
                 |> Enum.flat_map(& &1.check_group(entries, config.thresholds))
 
               # EXPLAIN-based checks — one EXPLAIN per captured query

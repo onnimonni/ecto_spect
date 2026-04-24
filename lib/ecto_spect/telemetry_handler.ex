@@ -40,10 +40,14 @@ defmodule EctoSpect.TelemetryHandler do
 
   @doc false
   def handle_event(_event_name, measurements, metadata, filter_parameters) do
-    # Only capture when a test is marked as active (set by EctoSpect.Case setup)
-    if Process.get(:ecto_spect_active, false) do
+    sql = metadata.query
+
+    # Only capture when a test is marked as active (set by EctoSpect.Case setup).
+    # Skip transaction control statements (BEGIN/COMMIT/ROLLBACK/SAVEPOINT) — they
+    # are not user queries and cannot be EXPLAINed.
+    if Process.get(:ecto_spect_active, false) and not transaction_control?(sql) do
       entry = %{
-        sql: metadata.query,
+        sql: sql,
         params: metadata.params || [],
         cast_params: filter_cast_params(metadata.cast_params || [], filter_parameters || []),
         source: metadata.source,
@@ -55,6 +59,14 @@ defmodule EctoSpect.TelemetryHandler do
       EctoSpect.QueryStore.record(entry)
     end
   end
+
+  @transaction_control ~w(begin commit rollback savepoint release)
+  defp transaction_control?(sql) when is_binary(sql) do
+    downcased = sql |> String.trim() |> String.downcase()
+    Enum.any?(@transaction_control, &String.starts_with?(downcased, &1))
+  end
+
+  defp transaction_control?(_), do: false
 
   # Redact sensitive cast_params values based on key name.
   defp filter_cast_params(cast_params, []), do: cast_params
