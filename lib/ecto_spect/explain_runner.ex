@@ -16,7 +16,8 @@ defmodule EctoSpect.ExplainRunner do
 
   require Logger
 
-  @explain_prefix "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) "
+  @explain_select_prefix "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) "
+  @explain_mutation_prefix "EXPLAIN (FORMAT JSON) "
 
   @doc """
   Open a dedicated Postgrex connection for EXPLAIN queries.
@@ -70,15 +71,16 @@ defmodule EctoSpect.ExplainRunner do
 
   # Run the actual EXPLAIN query. Wraps mutations in a rolled-back transaction.
   defp run_explain(conn, entry) do
-    sql = @explain_prefix <> entry.sql
+    prefix = if mutation?(entry.sql), do: @explain_mutation_prefix, else: @explain_select_prefix
+    sql = prefix <> entry.sql
     params = entry.params
 
     if mutation?(entry.sql) do
       explain_mutation(conn, sql, params)
     else
       case Postgrex.query(conn, sql, params) do
-        {:ok, %{rows: [[json_string]]}} ->
-          {:ok, Jason.decode!(json_string)}
+        {:ok, %{rows: [[result]]}} ->
+          {:ok, decode_plan(result)}
 
         {:error, _} = err ->
           err
@@ -97,8 +99,8 @@ defmodule EctoSpect.ExplainRunner do
       end
     end)
     |> case do
-      {:error, {:explain_done, %{rows: [[json_string]]}}} ->
-        {:ok, Jason.decode!(json_string)}
+      {:error, {:explain_done, %{rows: [[result]]}}} ->
+        {:ok, decode_plan(result)}
 
       {:error, {:explain_error, reason}} ->
         {:error, reason}
@@ -110,6 +112,9 @@ defmodule EctoSpect.ExplainRunner do
         {:error, :unexpected_commit}
     end
   end
+
+  defp decode_plan(result) when is_binary(result), do: Jason.decode!(result)
+  defp decode_plan(result) when is_list(result) or is_map(result), do: result
 
   defp mutation?(sql) do
     sql
