@@ -11,7 +11,7 @@ env:
 
 jobs:
   test:
-    name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
+    name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }} / PG ${{ matrix.postgres }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -20,8 +20,31 @@ jobs:
         include:
           - elixir: "1.18"
             otp: "27"
+            postgres: "16"
+          - elixir: "1.18"
+            otp: "27"
+            postgres: "17"
+          - elixir: "1.18"
+            otp: "27"
+            postgres: "18"
           - elixir: "1.17"
             otp: "26"
+            postgres: "16"
+
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
       - uses: actions/checkout@v5
@@ -49,4 +72,11 @@ jobs:
       - name: Compile (warnings as errors)
         run: mix compile --warnings-as-errors
 
-      - run: mix test
+      - name: Run tests (unit + integration)
+        run: mix test --include integration
+        env:
+          PG_HOST: localhost
+          PG_PORT: "5432"
+          PG_USER: postgres
+          PG_PASSWORD: postgres
+          PG_DATABASE: postgres
