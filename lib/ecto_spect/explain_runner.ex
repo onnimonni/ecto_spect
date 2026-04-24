@@ -77,8 +77,8 @@ defmodule EctoSpect.ExplainRunner do
       explain_mutation(conn, sql, params)
     else
       case Postgrex.query(conn, sql, params) do
-        {:ok, %{rows: [[json_string]]}} ->
-          {:ok, Jason.decode!(json_string)}
+        {:ok, %{rows: [[plan_json]]}} ->
+          {:ok, plan_json}
 
         {:error, _} = err ->
           err
@@ -97,8 +97,8 @@ defmodule EctoSpect.ExplainRunner do
       end
     end)
     |> case do
-      {:error, {:explain_done, %{rows: [[json_string]]}}} ->
-        {:ok, Jason.decode!(json_string)}
+      {:error, {:explain_done, %{rows: [[plan_json]]}}} ->
+        {:ok, plan_json}
 
       {:error, {:explain_error, reason}} ->
         {:error, reason}

@@ -36,10 +36,9 @@ defmodule EctoSpect.Integration.ExplainRunnerTest do
   end
 
   test "EXPLAIN output is parseable for simple SELECT", %{conn: conn} do
-    {:ok, %{rows: [[json_string]]}} =
+    {:ok, %{rows: [[plan_json]]}} =
       Postgrex.query(conn, "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT 1", [])
 
-    plan_json = Jason.decode!(json_string)
     nodes = EctoSpect.PlanParser.parse(plan_json)
 
     assert length(nodes) >= 1
@@ -47,14 +46,13 @@ defmodule EctoSpect.Integration.ExplainRunnerTest do
   end
 
   test "EXPLAIN output is parseable for table scan", %{conn: conn} do
-    {:ok, %{rows: [[json_string]]}} =
+    {:ok, %{rows: [[plan_json]]}} =
       Postgrex.query(
         conn,
         "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT * FROM ecto_spect_test_users WHERE id = $1",
         [1]
       )
 
-    plan_json = Jason.decode!(json_string)
     nodes = EctoSpect.PlanParser.parse(plan_json)
 
     assert length(nodes) >= 1
@@ -104,14 +102,14 @@ defmodule EctoSpect.Integration.ExplainRunnerTest do
   end
 
   test "PlanParser extracts node fields from plan", %{conn: conn} do
-    {:ok, %{rows: [[json_string]]}} =
+    {:ok, %{rows: [[plan_json]]}} =
       Postgrex.query(
         conn,
         "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT * FROM ecto_spect_test_users",
         []
       )
 
-    [node | _] = EctoSpect.PlanParser.parse(Jason.decode!(json_string))
+    [node | _] = EctoSpect.PlanParser.parse(plan_json)
 
     assert is_binary(node.node_type)
     assert is_integer(node.actual_rows) or is_nil(node.actual_rows)
