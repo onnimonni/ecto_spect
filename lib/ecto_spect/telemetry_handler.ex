@@ -40,12 +40,13 @@ defmodule EctoSpect.TelemetryHandler do
 
   @doc false
   def handle_event(_event_name, measurements, metadata, filter_parameters) do
-    sql = metadata.query
+    sql = Map.get(metadata, :query)
 
     # Only capture when a test is marked as active (set by EctoSpect.Case setup).
-    # Skip transaction control statements (BEGIN/COMMIT/ROLLBACK/SAVEPOINT) — they
-    # are not user queries and cannot be EXPLAINed.
-    if Process.get(:ecto_spect_active, false) and not transaction_control?(sql) do
+    # Guard against non-query telemetry events (metadata.query absent) and
+    # skip transaction control statements (BEGIN/COMMIT/ROLLBACK/SAVEPOINT).
+    if is_binary(sql) and Process.get(:ecto_spect_active, false) and
+         not transaction_control?(sql) do
       entry = %{
         sql: sql,
         params: metadata.params || [],
