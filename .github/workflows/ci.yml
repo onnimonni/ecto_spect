@@ -17,12 +17,20 @@ jobs:
         include:
           - elixir: "1.18"
             otp: "27"
+            postgres: "18"
+          - elixir: "1.18"
+            otp: "27"
+            postgres: "17"
+          - elixir: "1.18"
+            otp: "27"
+            postgres: "16"
           - elixir: "1.17"
             otp: "26"
+            postgres: "17"
 
     services:
       postgres:
-        image: postgres:17
+        image: postgres:${{ matrix.postgres }}
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
