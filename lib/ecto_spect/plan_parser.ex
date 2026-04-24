@@ -43,6 +43,12 @@ defmodule EctoSpect.PlanParser do
   def parse(_), do: []
 
   # Recursive walk — returns flat list with parent/depth context.
+  # PG 18 changed some integer fields (e.g. "Actual Rows") to float in EXPLAIN JSON.
+  # Normalize to integer for consistent rule comparisons across PG versions.
+  defp to_integer(nil), do: nil
+  defp to_integer(n) when is_integer(n), do: n
+  defp to_integer(n) when is_float(n), do: round(n)
+
   defp walk(_node, _parent_type, depth) when depth > 1000, do: []
 
   defp walk(node, parent_type, depth) do
@@ -55,10 +61,10 @@ defmodule EctoSpect.PlanParser do
       filter: node["Filter"],
       join_type: node["Join Type"],
       sort_key: node["Sort Key"],
-      actual_rows: node["Actual Rows"],
-      plan_rows: node["Plan Rows"],
-      actual_loops: node["Actual Loops"],
-      rows_removed_by_filter: node["Rows Removed by Filter"],
+      actual_rows: to_integer(node["Actual Rows"]),
+      plan_rows: to_integer(node["Plan Rows"]),
+      actual_loops: to_integer(node["Actual Loops"]),
+      rows_removed_by_filter: to_integer(node["Rows Removed by Filter"]),
       actual_total_time_ms: node["Actual Total Time"],
       total_cost: node["Total Cost"],
       shared_hit_blocks: node["Shared Hit Blocks"],
