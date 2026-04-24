@@ -1,12 +1,12 @@
-defmodule EctoVerify.MixProject do
+defmodule EctoSpect.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @source_url "https://github.com/onnimonni/ecto_verify"
+  @source_url "https://github.com/onnimonni/ecto_spect"
 
   def project do
     [
-      app: :ecto_verify,
+      app: :ecto_spect,
       version: @version,
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
@@ -35,7 +35,7 @@ defmodule EctoVerify.MixProject do
       # test only
       {:postgrex, "~> 0.22", only: [:test]},
 
-      # optional — enables `mix ecto_verify.install`
+      # optional — enables `mix ecto_spect.install`
       {:igniter, "~> 0.5", optional: true},
 
       # dev only
@@ -57,7 +57,7 @@ defmodule EctoVerify.MixProject do
 
   defp docs do
     [
-      main: "EctoVerify",
+      main: "EctoSpect",
       source_url: @source_url,
       extras: ["README.md"]
     ]

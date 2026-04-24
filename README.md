@@ -1,4 +1,4 @@
-# EctoVerify
+# EctoSpect
 
 Analyzes PostgreSQL query plans during ExUnit tests and fails tests on bad query patterns.
 Inspired by [Credo](https://github.com/rrrene/credo), [squawk](https://github.com/sbdchd/squawk), and [excellent_migrations](https://github.com/Artur-Sulej/excellent_migrations).
@@ -47,7 +47,7 @@ Inspired by [Credo](https://github.com/rrrene/credo), [squawk](https://github.co
 ### With Igniter (recommended)
 
 ```sh
-mix igniter.install ecto_verify
+mix igniter.install ecto_spect
 ```
 
 This automatically patches `test/test_helper.exs` and your `DataCase`.
@@ -59,7 +59,7 @@ Add to `mix.exs`:
 ```elixir
 def deps do
   [
-    {:ecto_verify, "~> 0.1", only: [:test, :dev]}
+    {:ecto_spect, "~> 0.1", only: [:test, :dev]}
   ]
 end
 ```
@@ -68,7 +68,7 @@ Then run:
 
 ```sh
 mix deps.get
-mix ecto_verify.install
+mix ecto_spect.install
 ```
 
 ---
@@ -77,10 +77,10 @@ mix ecto_verify.install
 
 ### 1. `test/test_helper.exs`
 
-Call `EctoVerify.setup/1` **before** `ExUnit.start/0`:
+Call `EctoSpect.setup/1` **before** `ExUnit.start/0`:
 
 ```elixir
-EctoVerify.setup(
+EctoSpect.setup(
   repos: [MyApp.Repo],
   thresholds: [
     seq_scan_min_rows: 100,   # rows before seq scan is flagged
@@ -88,7 +88,7 @@ EctoVerify.setup(
     max_indexes: 10,          # max indexes per table
     estimation_error_ratio: 10 # plan/actual rows ratio threshold
   ],
-  ignore_rules: [EctoVerify.Rules.MissingLimit],
+  ignore_rules: [EctoSpect.Rules.MissingLimit],
   filter_parameters: [:password, :token]  # redact from diagnostics
 )
 ExUnit.start()
@@ -96,7 +96,7 @@ ExUnit.start()
 
 ### 2. `test/support/data_case.ex`
 
-Add `use EctoVerify.Case` inside the `quote do` block:
+Add `use EctoSpect.Case` inside the `quote do` block:
 
 ```elixir
 defmodule MyApp.DataCase do
@@ -104,7 +104,7 @@ defmodule MyApp.DataCase do
 
   using do
     quote do
-      use EctoVerify.Case, repo: MyApp.Repo  # <-- add this
+      use EctoSpect.Case, repo: MyApp.Repo  # <-- add this
 
       import Ecto
       import Ecto.Changeset
@@ -140,7 +140,7 @@ defmodule MyApp.Repo do
 
     @impl true
     def prepare_query(_op, query, opts) do
-      comment = EctoVerify.SqlAnnotator.build_comment(opts)
+      comment = EctoSpect.SqlAnnotator.build_comment(opts)
       {query, [comment: comment, prepare: :unnamed] ++ opts}
     end
   end
@@ -150,7 +150,7 @@ end
 Queries in logs will look like:
 
 ```sql
-/* ecto_verify: lib/my_app/accounts.ex:42 MyApp.Accounts.list_users/0 */
+/* ecto_spect: lib/my_app/accounts.ex:42 MyApp.Accounts.list_users/0 */
 SELECT u0."id", u0."email" FROM "users" AS u0
 ```
 
@@ -161,9 +161,9 @@ SELECT u0."id", u0."email" FROM "users" AS u0
 When a violation is found the test fails with a Credo-style message:
 
 ```
-EctoVerify found 1 violation(s):
+EctoSpect found 1 violation(s):
 
-  [E] Sequential scan on `users` touching 1,432 rows — EctoVerify.Rules.SequentialScan
+  [E] Sequential scan on `users` touching 1,432 rows — EctoSpect.Rules.SequentialScan
 
   Query:
     SELECT u0."id", u0."email" FROM "users" AS u0 WHERE (u0."active" = $1)
@@ -187,11 +187,11 @@ EctoVerify found 1 violation(s):
 
 ## Custom rules
 
-Implement `EctoVerify.Rule`:
+Implement `EctoSpect.Rule`:
 
 ```elixir
 defmodule MyApp.Rules.NoFullTableExport do
-  @behaviour EctoVerify.Rule
+  @behaviour EctoSpect.Rule
 
   def name, do: "no-full-table-export"
   def description, do: "Prevents SELECT * without WHERE on large tables"
@@ -199,7 +199,7 @@ defmodule MyApp.Rules.NoFullTableExport do
   def check(nodes, entry, _thresholds) do
     top = hd(nodes)
     if top.node_type == "Seq Scan" and not String.contains?(entry.sql, "WHERE") do
-      [%EctoVerify.Violation{
+      [%EctoSpect.Violation{
         rule: __MODULE__,
         severity: :error,
         message: "Full table export on `#{top.relation_name}`",
@@ -214,12 +214,12 @@ defmodule MyApp.Rules.NoFullTableExport do
 end
 ```
 
-Register in `EctoVerify.setup/1`:
+Register in `EctoSpect.setup/1`:
 
 ```elixir
-EctoVerify.setup(
+EctoSpect.setup(
   repos: [MyApp.Repo],
-  rules: EctoVerify.Config.default_rules() ++ [MyApp.Rules.NoFullTableExport]
+  rules: EctoSpect.Config.default_rules() ++ [MyApp.Rules.NoFullTableExport]
 )
 ```
 
